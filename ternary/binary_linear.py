@@ -5,7 +5,7 @@ class BinaryLinearFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input, weight, bias=None):
         ctx.save_for_backward(input, weight, bias)
-        binary_weight = weight.sign()
+        binary_weight = weight.sign() # 가중치의 부호만 사용해봅니다.
         output = input @ binary_weight.t()
         if bias is not None:
             output += bias

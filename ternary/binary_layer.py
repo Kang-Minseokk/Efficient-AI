@@ -27,3 +27,6 @@ class BinaryLinear(nn.Module):
 
     def forward(self, input):
         return BinaryLinearFunction.apply(input, self.weight, self.bias)
+    
+    def get_binary_weight(self):
+        return self.weight.sign()

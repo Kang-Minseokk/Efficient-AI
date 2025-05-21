@@ -45,6 +45,9 @@ def get_args():
     
     # Ternary 여부
     parser.add_argument('--use_ternary', action='store_true', help='Use TernaryLinear instead of BinaryLinear')
+    
+    # Teranry QAT 여부
+    parser.add_argument('--qat_ternary', action='store_true', help='Ternary by QAT method')
 
     args = parser.parse_args()
 

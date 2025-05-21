@@ -21,6 +21,11 @@ BinaryLinear = base.BinaryLinear  # base_me.BinaryLinear
 BinaryActivation = base.BinaryActivation  # base_me.BinaryActivation
 PReLU = nn.PReLU  # base_me.PReLU
 
+###### Ternary 추가 부분 ######
+TernaryConv = base.TernaryConv # Ternary Conv & Linear 추가해주기
+TernaryLinear = base.TernaryLinear
+###### Ternary 추가 부분 ######
+
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -41,18 +46,29 @@ def binaryconv1x1(in_planes, out_planes, stride=1, xnor=False):
     """1x1 convolution"""
     return BinaryConv(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, xnor=xnor)
 
+###### Ternary 추가 부분 ######
+def ternaryconv3x3(in_planes, out_planes, stride=1, xnor=False):
+    """3x3 ternary convolution with padding"""
+    return TernaryConv(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, xnor=xnor)
+
+
+def ternaryconv1x1(in_planes, out_planes, stride=1, xnor=False):
+    """1x1 ternary convolution"""
+    return TernaryConv(in_planes, out_planes, kernel_size=1, stride=stride, padding=0, xnor=xnor)
+
 
 class firstconv3x3(nn.Module):
-    def __init__(self, inp, oup, stride):
+    def __init__(self, inp, oup, stride, use_ternary=False):
         super(firstconv3x3, self).__init__()
-        self.conv1 = nn.Conv2d(inp, oup, 3, stride, 1, bias=False)
+        ConvClass = TernaryConv if use_ternary else nn.Conv2d # firstconv Layer도 마찬가지로 Ternary 적용
+        self.conv1 = ConvClass(inp, oup, 3, stride, 1, bias=False)
         self.bn1 = BatchNorm(oup)
 
     def forward(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
         return out
-
+###### Ternary 추가 부분 ######
 
 class LearnableBias(nn.Module):
     def __init__(self, out_chn):
@@ -65,11 +81,12 @@ class LearnableBias(nn.Module):
 
 
 class BasicBlock(nn.Module):
-    def __init__(self, inplanes, planes, stride=1, xnor=False, approx=None):
+    def __init__(self, inplanes, planes, stride=1, xnor=False, approx=None, use_ternary=False):
         super(BasicBlock, self).__init__()
 
         self.move11 = LearnableBias(inplanes)
-        self.binary_3x3 = binaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor)
+        self.conv_3x3 = ternaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor) if use_ternary \
+            else binaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor) # 조건문으로 Ternary 사용여부 결정
         self.bn1 = BatchNorm(inplanes)
 
         self.move12 = LearnableBias(inplanes)
@@ -79,11 +96,14 @@ class BasicBlock(nn.Module):
         self.move21 = LearnableBias(inplanes)
 
         if inplanes == planes:
-            self.binary_pw = binaryconv1x1(inplanes, planes, xnor=xnor)
+            self.binary_pw = ternaryconv1x1(inplanes, planes, xnor=xnor) if use_ternary \
+                else binaryconv1x1(inplanes, planes, xnor=xnor)
             self.bn2 = BatchNorm(planes)
         else:
-            self.binary_pw_down1 = binaryconv1x1(inplanes, inplanes, xnor=xnor)
-            self.binary_pw_down2 = binaryconv1x1(inplanes, inplanes, xnor=xnor)
+            self.binary_pw_down1 = ternaryconv1x1(inplanes, inplanes, xnor=xnor) if use_ternary \
+                else binaryconv1x1(inplanes, inplanes, xnor=xnor)
+            self.binary_pw_down2 = ternaryconv1x1(inplanes, inplanes, xnor=xnor) if use_ternary \
+                else binaryconv1x1(inplanes, inplanes, xnor=xnor)
             self.bn2_1 = BatchNorm(inplanes)
             self.bn2_2 = BatchNorm(inplanes)
 
@@ -104,7 +124,7 @@ class BasicBlock(nn.Module):
         out1 = self.move11(x)
 
         out1 = self.binary_activation(out1)
-        out1 = self.binary_3x3(out1)
+        out1 = self.conv_3x3(out1)
         out1 = self.bn1(out1)
 
         if self.stride == 2:
@@ -142,7 +162,7 @@ class BasicBlock(nn.Module):
 
 
 class AdamBNN(nn.Module):
-    def __init__(self, num_classes, xnor, approx):
+    def __init__(self, num_classes, xnor, approx, use_ternary=False):
         super(AdamBNN, self).__init__()
         
         # Feature extractor
@@ -157,6 +177,7 @@ class AdamBNN(nn.Module):
         self.pool1 = nn.AdaptiveAvgPool2d(1)
 
         # Header
+        ###### 극한의 효율을 추구하지 않는한, 출력 계층은 그대로 실수로 유지한다고 한다. 그래서 nn.Linear를 사용함. ######        
         layers = [nn.Linear(1024, num_classes, bias=False), 
                     BatchNorm(num_classes, affine=False, track_running_stats=False)]
         self.fc = nn.Sequential(*layers)

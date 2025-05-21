@@ -7,7 +7,7 @@ from models.base import *
 
 
 class MLP(nn.Module):
-    def __init__(self, in_dim=12288, hid_dim=8192, out_dim=200, depth=4, approx=None, use_ternary=False):
+    def __init__(self, in_dim=12288, hid_dim=8192, out_dim=200, depth=4, approx=None, use_ternary=False, qat_ternary=False):
         super(MLP, self).__init__()
         self.depth = depth
 
@@ -53,7 +53,7 @@ class MLP(nn.Module):
             self.feature[3*i+2].scale = torch.tensor(1+t*2).float()
 
 
-def get_mlp(in_shape=(64,3), hid_dim=256, out_dim=200, depth=4, approx=None, use_ternary=False):
+def get_mlp(in_shape=(64,3), hid_dim=256, out_dim=200, depth=4, approx=None, use_ternary=False, qat_ternary=False):
     in_dim = in_shape[0]**2 * in_shape[1]
     
     model = MLP(in_dim=in_dim, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary)

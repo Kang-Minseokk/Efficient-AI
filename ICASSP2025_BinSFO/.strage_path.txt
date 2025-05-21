@@ -1,1 +1,1 @@
-/PATH/TO/YOUR/STRAGE
+/workspace/Minseok/ICASSP2025_BinSFO

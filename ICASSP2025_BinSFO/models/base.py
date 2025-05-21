@@ -6,33 +6,41 @@ from models.base_memory_efficient import SignFunction, SignFunctionReSTE, SignFu
 
 
 class BinaryConv(nn.Module):
-    def __init__(self, in_chn, out_chn, kernel_size, stride, padding, xnor=False):
+    def __init__(self, in_chn, out_chn, kernel_size, stride, padding, xnor=False, qat_ternary=False):
         super(BinaryConv, self).__init__()
         self.stride = stride
         self.padding = padding
         self.shape = (out_chn, in_chn, kernel_size, kernel_size)
         self.weight = nn.Parameter(torch.rand((self.shape)) * 0.01, requires_grad=True)
         self.xnor = xnor
+        self.qat_ternary = qat_ternary
 
     def forward(self, x):
         if self.xnor:
             scaling_factor = torch.mean(torch.abs(self.weight)).detach()
             binary_weights = SignFunctionXNOR.apply(self.weight, scaling_factor)
+        elif self.qat_ternary: # QAT 방식 추가
+            threshold = 0.05  # 또는 torch.mean(torch.abs(self.weight)).item()
+            binary_weight = TernaryQuantizeFunction.apply(self.weight, threshold)
         else:
             binary_weights = SignFunction.apply(self.weight)
         return F.conv2d(x, binary_weights, stride=self.stride, padding=self.padding)
 
 
 class BinaryLinear(nn.Module):
-    def __init__(self, in_features, out_features, xnor=False):
+    def __init__(self, in_features, out_features, xnor=False, qat_ternary=False):
         super(BinaryLinear, self).__init__()
         self.weight = nn.Parameter(torch.rand((out_features, in_features)) * 0.01, requires_grad=True)
         self.xnor = xnor
+        self.qat_ternary = qat_ternary
 
     def forward(self, x):
         if self.xnor:
             scaling_factor = torch.mean(torch.abs(self.weight)).detach()
             b_weight = SignFunctionXNOR.apply(self.weight, scaling_factor)
+        elif self.qat_ternary: # QAT 방식 추가
+            threshold = 0.05  # 또는 torch.mean(torch.abs(self.weight)).item()
+            binary_weight = TernaryQuantizeFunction.apply(self.weight, threshold)
         else:            
             b_weight = SignFunction.apply(self.weight)            
         
@@ -88,4 +96,33 @@ class TernaryLinear(nn.Module):
         out2 = self.binary2(x)
         return out1 - out2  # 결과적으로 {-1, 0, 1} 도메인 생성
 
+# TernaryConv 클래스 새롭게 정의
+class TernaryConv(nn.Module):
+    def __init__(self, in_chn, out_chn, kernel_size, stride, padding, xnor=False):
+        super().__init__()
+        self.binaryconv1 = BinaryConv(in_chn, out_chn, kernel_size, stride, padding, xnor=False)
+        self.binaryconv2 = BinaryConv(in_chn, out_chn, kernel_size, stride, padding, xnor=False)
+        
+    def forward(self, x):
+        out1 = self.binaryconv1(x)
+        out2 = self.binaryconv2(x)
+        return out1 - out2    
     
+    
+# Ternary QAT를 위한 클래스 생성
+class TernaryQuantizeFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input, threshold):
+        ctx.save_for_backward(input)
+        out = input.clone()
+        out[input > threshold] = 1
+        out[input < -threshold] = -1
+        out[(input <= threshold) & (input >= -threshold)] = 0
+        return out
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # STE 방식: gradient를 그대로 흘림
+        input, = ctx.saved_tensors
+        grad_input = grad_output.clone()
+        return grad_input, None  # threshold는 학습 대상이 아니므로 None

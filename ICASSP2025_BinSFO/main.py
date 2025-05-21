@@ -1,5 +1,6 @@
 # Modified by Minseok Kang, 2025.05.11
 # Based on original code from ICCASP2025_BinSFO (authors' implementation)
+# python main.py --batch_size 128 --dataset CIFAR10 --epochs 5 --lr 0.01 --model MLP --algorithm binary --test
 
 from utils import *
 from datasets import get_dataset
@@ -29,7 +30,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 DATA_INFO = {
     "MNIST"        : {"input": (64,1),  "output": 10},
-    "CIFAR10"      : {"input": (32,3),  "output": 10},
+    "CIFAR10"      : {"input": (256,3),  "output": 10},
     "CIFAR100"     : {"input": (32,3),  "output": 100},
     "Caltech101"   : {"input": (256,3), "output": 101},
     "Caltech256"   : {"input": (256,3), "output": 256},
@@ -53,7 +54,7 @@ def main(kwargs):
 
     fix_seed(kwargs["seed"])
     master_addr = os.getenv("MASTER_ADDR", default="localhost")
-    master_port = os.getenv('MASTER_PORT', default='8888')
+    master_port = os.getenv('MASTER_PORT', default='8889') # 포트 번호가 날 방해한다.
     method = "tcp://{}:{}".format(master_addr, master_port)
 
     dist.init_process_group("nccl", init_method=method, rank=RANK, world_size=WORLD_SIZE)
@@ -226,6 +227,11 @@ def train(model, train_loader, valid_loader, kwargs):
         
         if RANK==0:
             send_log(results, wandb_flag=kwargs["log"])
+    
+    # 학습할 때 사용된 GPU 최대 사용량을 출력해주는 코드
+    if torch.cuda.is_available():
+        max_memory = torch.cuda.max_memory_allocated() / 1024 / 1024  # MB 단위
+        print(f"[GPU] Max memory allocated during training: {max_memory:.2f} MB")
 
 
 def evaluate(model, data_loader, loss_function, topk, valid=True):

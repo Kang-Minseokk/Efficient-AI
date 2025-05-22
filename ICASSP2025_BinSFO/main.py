@@ -30,7 +30,7 @@ from torch.nn.parallel import DistributedDataParallel
 
 DATA_INFO = {
     "MNIST"        : {"input": (64,1),  "output": 10},
-    "CIFAR10"      : {"input": (256,3),  "output": 10},
+    "CIFAR10"      : {"input": (64,3),  "output": 10},
     "CIFAR100"     : {"input": (32,3),  "output": 100},
     "Caltech101"   : {"input": (256,3), "output": 101},
     "Caltech256"   : {"input": (256,3), "output": 256},
@@ -54,7 +54,7 @@ def main(kwargs):
 
     fix_seed(kwargs["seed"])
     master_addr = os.getenv("MASTER_ADDR", default="localhost")
-    master_port = os.getenv('MASTER_PORT', default='8889') # 포트 번호가 날 방해한다.
+    master_port = os.getenv('MASTER_PORT', default='8892') # 포트 번호가 날 방해한다.
     method = "tcp://{}:{}".format(master_addr, master_port)
 
     dist.init_process_group("nccl", init_method=method, rank=RANK, world_size=WORLD_SIZE)
@@ -67,6 +67,8 @@ def main(kwargs):
     
     model = get_model(model=kwargs["model"], depth=kwargs["depth"], hid_dim=kwargs["hid_dim"], dataset=kwargs["dataset"], xnor=kwargs["xnor"], approx=kwargs["approx"], freeze_num=kwargs["freeze_num"], 
                       use_ternary=kwargs["use_ternary"]).to(DEVICE)
+    if kwargs["use_ternary"] :
+        print("Ternary Mode") # Ternary Mode 확인
     model = DistributedDataParallel(model, device_ids=[LOCAL_RANK])
 
     if kwargs["optimizer"] == "Adam":

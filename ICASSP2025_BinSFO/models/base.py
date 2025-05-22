@@ -106,7 +106,7 @@ class TernaryConv(nn.Module):
     def forward(self, x):
         out1 = self.binaryconv1(x)
         out2 = self.binaryconv2(x)
-        return out1 - out2    
+        return out1 - out2  
     
     
 # Ternary QAT를 위한 클래스 생성

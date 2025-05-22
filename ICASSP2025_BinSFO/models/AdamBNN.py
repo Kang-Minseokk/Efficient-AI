@@ -85,7 +85,7 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
 
         self.move11 = LearnableBias(inplanes)
-        self.conv_3x3 = ternaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor) if use_ternary \
+        self.binary_3x3 = ternaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor) if use_ternary \
             else binaryconv3x3(inplanes, inplanes, stride=stride, xnor=xnor) # 조건문으로 Ternary 사용여부 결정
         self.bn1 = BatchNorm(inplanes)
 
@@ -124,7 +124,7 @@ class BasicBlock(nn.Module):
         out1 = self.move11(x)
 
         out1 = self.binary_activation(out1)
-        out1 = self.conv_3x3(out1)
+        out1 = self.binary_3x3(out1)
         out1 = self.bn1(out1)
 
         if self.stride == 2:

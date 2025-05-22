@@ -71,7 +71,7 @@ class OtherDataset(Dataset):
 
 
 
-def get_dataset(dataset_name, test=True, resize=256):
+def get_dataset(dataset_name, test=True, resize=64): # 차원 Mismatch를 해결하기 위해서 64로 변경하였음
     
     resize2d = (resize, resize)
     valid_ratio = 0.15

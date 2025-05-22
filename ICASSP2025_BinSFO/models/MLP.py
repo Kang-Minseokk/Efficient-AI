@@ -24,7 +24,7 @@ class MLP(nn.Module):
         self.feature = nn.Sequential(*layers)
 
         dim1 = hid_dim if depth>1 else in_dim
-        out_layer = [BinaryLinear(dim1, out_dim),
+        out_layer = [LinearClass(dim1, out_dim),
                      nn.SyncBatchNorm(out_dim, affine=False, track_running_stats=False)]
         self.classifier = nn.Sequential(*out_layer)
 

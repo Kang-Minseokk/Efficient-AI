@@ -15,3 +15,9 @@ dataset
 
 # Ternary with STE 의 데이터 셋
 Ternary_with_STE/data
+
+# Compare를 위한 디렉토리
+BinSFO_copy
+
+# Nohup output 
+result

@@ -54,7 +54,7 @@ def main(kwargs):
 
     fix_seed(kwargs["seed"])
     master_addr = os.getenv("MASTER_ADDR", default="localhost")
-    master_port = os.getenv('MASTER_PORT', default='8894') # 포트 번호가 날 방해한다.
+    master_port = os.getenv('MASTER_PORT', default='8895') # 포트 번호가 날 방해한다.
     method = "tcp://{}:{}".format(master_addr, master_port)
 
     dist.init_process_group("nccl", init_method=method, rank=RANK, world_size=WORLD_SIZE)

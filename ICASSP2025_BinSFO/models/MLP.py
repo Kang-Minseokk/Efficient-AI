@@ -10,6 +10,14 @@ class MLP(nn.Module):
     def __init__(self, in_dim=12288, hid_dim=8192, out_dim=200, depth=4, approx=None, use_ternary=False, qat_ternary=False):
         super(MLP, self).__init__()
         self.depth = depth
+        
+        def get_linear_class(use_ternary, qat_ternary):
+            if qat_ternary:
+                return QatTernaryLinear
+            elif use_ternary:
+                return TernaryLinear
+            else:
+                return BinaryLinear
 
         layers = []
         for d in range(depth-1):
@@ -17,10 +25,12 @@ class MLP(nn.Module):
             dim2 = hid_dim
             
             # ternary 적용 여부 
-            LinearClass = TernaryLinear if use_ternary else BinaryLinear
+            LinearClass = get_linear_class(use_ternary, qat_ternary)
             layers += [LinearClass(dim1, dim2),
-                       nn.SyncBatchNorm(dim2, affine=False, track_running_stats=False),
-                       BinaryActivation(approx=approx)]
+                       nn.SyncBatchNorm(dim2, affine=False, track_running_stats=False)
+                       ]
+            if not qat_ternary:
+                layers.append(BinaryActivation(approx=approx))
         self.feature = nn.Sequential(*layers)
 
         dim1 = hid_dim if depth>1 else in_dim
@@ -59,3 +69,5 @@ def get_mlp(in_shape=(64,3), hid_dim=256, out_dim=200, depth=4, approx=None, use
     model = MLP(in_dim=in_dim, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary)
     
     return model
+
+

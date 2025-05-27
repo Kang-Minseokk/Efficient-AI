@@ -106,23 +106,59 @@ class TernaryConv(nn.Module):
     def forward(self, x):
         out1 = self.binaryconv1(x)
         out2 = self.binaryconv2(x)
-        return out1 - out2  
+        return (out1 - out2) * 0.5
     
     
 # Ternary QAT를 위한 클래스 생성
-class TernaryQuantizeFunction(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, input, threshold):
-        ctx.save_for_backward(input)
-        out = input.clone()
-        out[input > threshold] = 1
-        out[input < -threshold] = -1
-        out[(input <= threshold) & (input >= -threshold)] = 0
-        return out
+# class TernaryQuantizeFunction(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, input, threshold):
+#         ctx.save_for_backward(input)
+#         out = input.clone()
+#         out[input > threshold] = 1
+#         out[input < -threshold] = -1
+#         out[(input <= threshold) & (input >= -threshold)] = 0
+#         return out
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        # STE 방식: gradient를 그대로 흘림
-        input, = ctx.saved_tensors
-        grad_input = grad_output.clone()
-        return grad_input, None  # threshold는 학습 대상이 아니므로 None
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         # STE 방식: gradient를 그대로 흘림
+#         input, = ctx.saved_tensors
+#         grad_input = grad_output.clone()
+#         return grad_input, None  # threshold는 학습 대상이 아니므로 None
+# 가중치를 -1, 0, 1이라는 값으로 양자화는 적절하지만, threshold가 고정되어있다는 점이 상당히 큰 문제로 
+# 작용할 것 같다.
+
+class QatTernaryLinear(nn.Module):
+    """
+    BitNet TernaryLinear: 2-bit (1.58-bit) weight quantization with per-tensor scale α.
+    Forward: w_q = STE( clamp(round(w/α), -1,1) * α ), y = x @ w_q^T + b
+    """
+    def __init__(self, in_features, out_features, bias=True):
+        super().__init__()
+        self.in_features  = in_features
+        self.out_features = out_features
+        self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
+        if bias:
+            self.bias = nn.Parameter(torch.Tensor(out_features))
+        else:
+            self.register_parameter('bias', None)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+        if self.bias is not None:
+            bound = 1.0 / math.sqrt(self.in_features)
+            nn.init.uniform_(self.bias, -bound, bound)
+
+    def forward(self, x):
+        # 1) compute scale α = mean(|w|)
+        alpha = self.weight.abs().mean()
+        # 2) normalize and quantize: Q = clamp(round(w/α), -1, +1) ∈ {–1, 0, +1}
+        w_norm = self.weight / alpha
+        Q = w_norm.round().clamp(-1, 1)
+        # 3) dequantize: w_q = α * Q
+        w_q = alpha * Q
+        # 4) STE: gradient flows to latent w
+        w_q = self.weight + (w_q - self.weight).detach()
+        return F.linear(x, w_q, self.bias)

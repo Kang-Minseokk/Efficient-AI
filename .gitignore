@@ -12,6 +12,7 @@ model
 
 # 데이터셋
 dataset
+BitNet_based_ternary/data
 
 # Ternary with STE 의 데이터 셋
 Ternary_with_STE/data

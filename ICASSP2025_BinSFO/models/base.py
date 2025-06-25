@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import math
 from models.base_memory_efficient import SignFunction, SignFunctionReSTE, SignFunctionNoSTE, SignFunctionXNOR
 
 
@@ -28,21 +28,18 @@ class BinaryConv(nn.Module):
 
 
 class BinaryLinear(nn.Module):
-    def __init__(self, in_features, out_features, xnor=False, qat_ternary=False):
+    def __init__(self, in_features, out_features, xnor=False):
         super(BinaryLinear, self).__init__()
         self.weight = nn.Parameter(torch.rand((out_features, in_features)) * 0.01, requires_grad=True)
-        self.xnor = xnor
-        self.qat_ternary = qat_ternary
+        self.xnor = xnor        
 
     def forward(self, x):
         if self.xnor:
             scaling_factor = torch.mean(torch.abs(self.weight)).detach()
-            b_weight = SignFunctionXNOR.apply(self.weight, scaling_factor)
-        elif self.qat_ternary: # QAT 방식 추가
-            threshold = 0.05  # 또는 torch.mean(torch.abs(self.weight)).item()
-            binary_weight = TernaryQuantizeFunction.apply(self.weight, threshold)
+            b_weight = SignFunctionXNOR.apply(self.weight, scaling_factor)               
         else:            
-            b_weight = SignFunction.apply(self.weight)            
+            b_weight = SignFunction.apply(self.weight)                       
+        out = F.linear(x, b_weight, None)
         
         return F.linear(x, b_weight, None)
 
@@ -84,16 +81,18 @@ class ApproxSign(torch.autograd.Function):
         return x_grad
 
 
-# TernaryLinear 클래스 새로 정의
+# TernaryLinear 클래스 새로 정의 (Tricky Ternary)
 class TernaryLinear(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
         self.binary1 = BinaryLinear(in_features, out_features)
         self.binary2 = BinaryLinear(in_features, out_features)        
 
-    def forward(self, x):
-        out1 = self.binary1(x)
-        out2 = self.binary2(x)
+    def forward(self, x):        
+        out1 = self.binary1(x)        
+        out2 = self.binary2(x)        
+        print("out1 unique: ", out1.unique())
+        print("out2 unique: ", out2.unique())
         return out1 - out2  # 결과적으로 {-1, 0, 1} 도메인 생성
 
 # TernaryConv 클래스 새롭게 정의
@@ -160,5 +159,5 @@ class QatTernaryLinear(nn.Module):
         # 3) dequantize: w_q = α * Q
         w_q = alpha * Q
         # 4) STE: gradient flows to latent w
-        w_q = self.weight + (w_q - self.weight).detach()
+        w_q = self.weight + (w_q - self.weight).detach()                
         return F.linear(x, w_q, self.bias)

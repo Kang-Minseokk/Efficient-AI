@@ -13,24 +13,29 @@ class MLP(nn.Module):
         
         def get_linear_class(use_ternary, qat_ternary):
             if qat_ternary:
+                print("Layer Type: qat ternary\n")
                 return QatTernaryLinear
             elif use_ternary:
+                print("Layer Type: Tricky ternary\n")
                 return TernaryLinear
             else:
+                print("Layer Type: Binary\n")
                 return BinaryLinear
 
         layers = []
+        # MLP의 Layer 결정
+        LinearClass = get_linear_class(use_ternary, qat_ternary)
         for d in range(depth-1):
             dim1 = in_dim if d==0 else hid_dim
-            dim2 = hid_dim
-            
-            # ternary 적용 여부 
-            LinearClass = get_linear_class(use_ternary, qat_ternary)
+            dim2 = hid_dim                        
+            # 기존 Layer:
             layers += [LinearClass(dim1, dim2),
-                       nn.SyncBatchNorm(dim2, affine=False, track_running_stats=False)
-                       ]
-            if not qat_ternary:
-                layers.append(BinaryActivation(approx=approx))
+                       nn.SyncBatchNorm(dim2, affine=False, track_running_stats=False),
+                       BinaryActivation(approx=approx)]
+            # layers += [LinearClass(dim1, dim2),
+            #            nn.GELU(),
+            #            nn.Dropout(0.1) # Dropout 레이어 추가
+            #            ]
         self.feature = nn.Sequential(*layers)
 
         dim1 = hid_dim if depth>1 else in_dim
@@ -63,11 +68,9 @@ class MLP(nn.Module):
             self.feature[3*i+2].scale = torch.tensor(1+t*2).float()
 
 
-def get_mlp(in_shape=(64,3), hid_dim=256, out_dim=200, depth=4, approx=None, use_ternary=False, qat_ternary=False):
-    in_dim = in_shape[0]**2 * in_shape[1]
+def get_mlp(in_shape=(32,3), hid_dim=512, out_dim=10, depth=4, approx=None, use_ternary=False, qat_ternary=False):
+    in_dim = in_shape[0]**2 * in_shape[1] # Slightly change for CIFAR10 in lower resolution
     
-    model = MLP(in_dim=in_dim, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary)
+    model = MLP(in_dim=in_dim, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary, qat_ternary = qat_ternary)
     
     return model
-
-

@@ -54,7 +54,7 @@ def main(kwargs):
 
     fix_seed(kwargs["seed"])
     master_addr = os.getenv("MASTER_ADDR", default="localhost")
-    master_port = os.getenv('MASTER_PORT', default='8895') # 포트 번호가 날 방해한다.
+    master_port = os.getenv('MASTER_PORT', default='8899') # 포트 번호가 날 방해한다.
     method = "tcp://{}:{}".format(master_addr, master_port)
 
     dist.init_process_group("nccl", init_method=method, rank=RANK, world_size=WORLD_SIZE)
@@ -66,9 +66,7 @@ def main(kwargs):
     valid_loader = torch.utils.data.DataLoader(valid_set, batch_size=kwargs["batch_size"]//WORLD_SIZE, shuffle=False, num_workers=8, pin_memory=True, worker_init_fn=worker_init_fn, sampler=test_sampler)
     
     model = get_model(model=kwargs["model"], depth=kwargs["depth"], hid_dim=kwargs["hid_dim"], dataset=kwargs["dataset"], xnor=kwargs["xnor"], approx=kwargs["approx"], freeze_num=kwargs["freeze_num"], 
-                      use_ternary=kwargs["use_ternary"]).to(DEVICE)
-    if kwargs["use_ternary"] :
-        print("Ternary Mode") # Ternary Mode 확인
+                      use_ternary=kwargs["use_ternary"], qat_ternary = kwargs["qat_ternary"]).to(DEVICE)
     model = DistributedDataParallel(model, device_ids=[LOCAL_RANK])
 
     if kwargs["optimizer"] == "Adam":
@@ -281,13 +279,13 @@ def test(model, data_loader, loss_function, topk):
     return total_count, loss, acc
 
 
-def get_model(model, depth, hid_dim, dataset, xnor, approx, freeze_num, use_ternary):
+def get_model(model, depth, hid_dim, dataset, xnor, approx, freeze_num, use_ternary, qat_ternary):
 
     in_shape = DATA_INFO[dataset]["input"]
     out_dim = DATA_INFO[dataset]["output"]
 
     if model=="MLP":
-        model = get_mlp(in_shape=in_shape, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary)
+        model = get_mlp(in_shape=in_shape, hid_dim=hid_dim, out_dim=out_dim, depth=depth, approx=approx, use_ternary=use_ternary, qat_ternary = qat_ternary)
 
     elif model=="AdamBNN":
         model = get_adambnn(out_dim=out_dim, xnor=xnor, approx=approx, freeze_num=freeze_num)

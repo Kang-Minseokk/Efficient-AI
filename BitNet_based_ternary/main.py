@@ -1,5 +1,7 @@
 from models.bit1 import BitNetMLP  
 from models.tricky_ternary import TerTrickMLP
+from models.bit1_58 import TernaryMLP
+from models.fp_16 import FP16MLP
 from get_args import get_args
 
 import torch
@@ -17,22 +19,50 @@ if __name__ == "__main__" :
     
     args = get_args()        
     if args.model == 'binary' :
+        print("Binary Mode")
         model = BitNetMLP(
                 in_features=32*32*3, # Dataset에 맞게 변환 필요
                 hidden_features=1024,
                 num_classes=10,
                 depth=4,
-                dropout=0.1,
-                quant_type='binary'
+                dropout=0.1                
             )                    
     
     elif args.model == 'trick_ternary':
+        print("Trick Ternary Mode")
         model = TerTrickMLP(
-            in_features = 32 * 32 * 3, 
+            in_features = 32*32*32, 
             hidden_features = args.hidden_features,
             dropout = args.dropout
         )
-
+        
+    elif args.model == 'qat_ternary':
+        print("QAT Ternary Mode")
+        model = TernaryMLP(
+            in_features=32*32*3, # Dataset에 맞게 변환 필요
+            hidden_features=1024,
+            num_classes=10,
+            depth=4,
+            dropout=0.1            
+        )
+    
+    elif args.model == 'fp16':
+        print("FP16 Mode")
+        model = FP16MLP(
+            in_features = 32*32*3,
+            hidden_features = 256,
+            num_classes = 10,
+            depth = 4,
+            dropout = 0.1
+        )
+        
+    # This is for MNIST Dataset!    
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize((0.1307,), (0.3081,))
+    # ])
+    
+    # This is for CIFAR-10 Dataset!
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
@@ -46,7 +76,7 @@ if __name__ == "__main__" :
     train_loader  = DataLoader(train_dataset, batch_size=256, shuffle=True)
     test_loader   = DataLoader(test_dataset,  batch_size=256, shuffle=False)
     # Optimizer & loss
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=2e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
     criterion = nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     epochs = 30

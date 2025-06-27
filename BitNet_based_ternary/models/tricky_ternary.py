@@ -32,7 +32,7 @@ class TerTrickMLP(nn.Module):
     Each hidden layer is a BinaryLinear or TernaryLinear quantized layer.
     """    
     def __init__(self,
-                 in_features: int = 32 * 32 * 3, 
+                 in_features: int = 32*32*3, 
                  hidden_features: int = 256,
                  num_classes: int = 10,
                  depth: int = 4,

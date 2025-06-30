@@ -14,6 +14,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import pynvml
+from models.mlp_mixer import MLPMixer # MLP Mixer
 
 
 if __name__ == "__main__" :
@@ -41,6 +42,17 @@ if __name__ == "__main__" :
     elif args.model == 'fp32':
         print("FP32 Mode")
         model = FP32MLP()
+    
+    elif args.model == 'mlp_mixer':
+        print("MLP Mixer Mode")
+        model = MLPMixer(
+            image_size = 32, # 이미지 한 변의 길ㅣ
+            channels = 3,
+            patch_size = 4,
+            dim = 512,
+            depth = 12,
+            num_classes = 10
+        )
         
     # This is for MNIST Dataset!    
     # transform = transforms.Compose([
@@ -52,7 +64,7 @@ if __name__ == "__main__" :
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(
-            mean = [0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010]
+            mean = [0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2010]
         )
     ])
 
@@ -63,6 +75,9 @@ if __name__ == "__main__" :
     test_loader   = DataLoader(test_dataset,  batch_size=256, shuffle=False)
     # Optimizer & loss
     optimizer = optim.Adam(model.parameters(), lr=8e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
+    # optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99), weight_decay=5e-5) # MLP Mixer 관련 글에서 AdamW를 사용하였다.
+    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 300, eta_min = 1e-6, last_epoch = -1, verbose = False)
+    
     criterion = nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     epochs = 30

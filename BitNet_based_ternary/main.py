@@ -1,7 +1,7 @@
 from models.bit1 import BitNetMLP  
 from models.tricky_ternary import TerTrickMLP
 from models.bit1_58 import TernaryMLP
-from models.fp_16 import FP16MLP
+from models.fp_32 import FP32MLP
 from get_args import get_args
 
 import torch
@@ -13,48 +13,34 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
+import pynvml
+
 
 if __name__ == "__main__" :
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     
+    pynvml.nvmlInit() # 전력 측정을 하기 위한 초기화
+    device_count = pynvml.nvmlDeviceGetCount()
+    print(f"Found {device_count} GPU(s).") # GPU 개수 확인
+    
+    power_list = []
+    
     args = get_args()        
     if args.model == 'binary' :
         print("Binary Mode")
-        model = BitNetMLP(
-                in_features=32*32*3, # Dataset에 맞게 변환 필요
-                hidden_features=1024,
-                num_classes=10,
-                depth=4,
-                dropout=0.1                
-            )                    
+        model = BitNetMLP()                    
     
     elif args.model == 'trick_ternary':
         print("Trick Ternary Mode")
-        model = TerTrickMLP(
-            in_features = 32*32*32, 
-            hidden_features = args.hidden_features,
-            dropout = args.dropout
-        )
+        model = TerTrickMLP()
         
     elif args.model == 'qat_ternary':
         print("QAT Ternary Mode")
-        model = TernaryMLP(
-            in_features=32*32*3, # Dataset에 맞게 변환 필요
-            hidden_features=1024,
-            num_classes=10,
-            depth=4,
-            dropout=0.1            
-        )
+        model = TernaryMLP()                             
     
-    elif args.model == 'fp16':
-        print("FP16 Mode")
-        model = FP16MLP(
-            in_features = 32*32*3,
-            hidden_features = 256,
-            num_classes = 10,
-            depth = 4,
-            dropout = 0.1
-        )
+    elif args.model == 'fp32':
+        print("FP32 Mode")
+        model = FP32MLP()
         
     # This is for MNIST Dataset!    
     # transform = transforms.Compose([
@@ -76,7 +62,7 @@ if __name__ == "__main__" :
     train_loader  = DataLoader(train_dataset, batch_size=256, shuffle=True)
     test_loader   = DataLoader(test_dataset,  batch_size=256, shuffle=False)
     # Optimizer & loss
-    optimizer = optim.Adam(model.parameters(), lr=2e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
+    optimizer = optim.Adam(model.parameters(), lr=8e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
     criterion = nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     epochs = 30
@@ -107,3 +93,15 @@ if __name__ == "__main__" :
                 correct += pred.eq(target).sum().item()
         acc = correct / len(test_loader.dataset)
         print(f"          Test Acc:  {acc*100:>.2f}%")
+        
+        handle = pynvml.nvmlDeviceGetHandleByIndex(0)      
+    
+        power_mw = pynvml.nvmlDeviceGetPowerUsage(handle)
+        power_watts = power_mw / 1000.0
+        power_list.append(power_watts)
+    
+    max_mem = torch.cuda.max_memory_allocated() / (1024**2)
+    print(f"Max GPU Memory Usage: {max_mem :.2f} MB")                    
+    
+    avg_power = sum(power_list) / len(power_list)
+    print(f"Average Power Draw: {avg_power:.2f} Watts")

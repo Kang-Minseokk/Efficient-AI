@@ -50,7 +50,7 @@ class TernaryMLP(nn.Module):
     """    
     def __init__(self,
                  in_features: int = 32 * 32 * 3, 
-                 hidden_features: int = 256,
+                 hidden_features: int = 512,
                  num_classes: int = 10,
                  depth: int = 4,
                  dropout: float = 0.1,

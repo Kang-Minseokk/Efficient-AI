@@ -14,8 +14,8 @@ from utils import RMSNorm
 
 class TernaryTrickLinear(nn.Module):
     def __init__(self,
-                 in_features: int = 28 * 28,
-                 hidden_features: int = 256,
+                 in_features: int,
+                 hidden_features: int,
                  bias=True,
                  ):
         super().__init__()
@@ -33,7 +33,7 @@ class TerTrickMLP(nn.Module):
     """    
     def __init__(self,
                  in_features: int = 32*32*3, 
-                 hidden_features: int = 256,
+                 hidden_features: int = 512,
                  num_classes: int = 10,
                  depth: int = 4,
                  dropout: float = 0.1,

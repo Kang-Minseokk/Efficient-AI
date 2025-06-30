@@ -39,7 +39,7 @@ class BinaryLinear(nn.Module):
 
     def forward(self, x):
         x = self.norm(x)
-        w_q = self.weight + (self.weight.sign() * torch.exp(self.scale) - self.weight).detach()
+        w_q = self.weight + self.weight.sign().detach() * torch.exp(self.scale) - self.weight.detach()
         return F.linear(x, w_q, self.bias)
 
 class BitNetMLP(nn.Module):
@@ -48,8 +48,8 @@ class BitNetMLP(nn.Module):
     Each hidden layer is a BinaryLinear or TernaryLinear quantized layer.
     """
     def __init__(self,
-                 in_features: int = 28 * 28,
-                 hidden_features: int = 256,
+                 in_features: int = 32*32*3,
+                 hidden_features: int = 512,
                  num_classes: int = 10,
                  depth: int = 4,
                  dropout: float = 0.1,                 

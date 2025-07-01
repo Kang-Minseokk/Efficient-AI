@@ -11,5 +11,5 @@ def get_args():
     parser.add_argument('--hidden_features', type=int, default=1024)
     parser.add_argument('--dataset', type=str, default='fashionmnist', choices=['fashionmnist', 'cifar10'])
     
-    parser.add_argument('--quantize_type', type=str, default='off', choices=['real', 'binary', 'qat_ternary', 'trick_ternary'])
+    parser.add_argument('--quantize_type', type=str, default='real', choices=['real', 'binary', 'qat_ternary', 'trick_ternary'])
     return parser.parse_args()

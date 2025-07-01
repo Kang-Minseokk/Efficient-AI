@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import pynvml
-from models.mlp_mixer import MLPMixer # MLP Mixer
+
 
 
 if __name__ == "__main__" :
@@ -44,13 +44,14 @@ if __name__ == "__main__" :
         model = FP32MLP()
     
     elif args.model == 'mlp_mixer':
+        from models.mlp_mixer import MLPMixer # MLP Mixer
         print("MLP Mixer Mode")
         model = MLPMixer(
-            image_size = 32, # 이미지 한 변의 길ㅣ
+            image_size = 32, # 이미지 한 변의 길이
             channels = 3,
             patch_size = 4,
             dim = 512,
-            depth = 12,
+            depth = 6,
             num_classes = 10
         )
         

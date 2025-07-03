@@ -65,7 +65,15 @@ if __name__ == "__main__" :
             config
         )
         
-        print(model) # 모델을 확인해보장
+    elif args.model == 'original_bitnet':
+        from models.modeling_bitnet import BitnetMLP
+        from models.configuration_bitnet import BitnetConfig
+        config = BitnetConfig()
+        print("Original Bitnet-style MLP")
+        model = BitnetMLP(
+            config
+        )
+        
         
     # This is for MNIST Dataset!    
     # transform = transforms.Compose([
@@ -99,7 +107,7 @@ if __name__ == "__main__" :
         model.train()
         total_loss = 0.0
         for data, target in train_loader:
-            data, target = data.to(device), target.to(device)
+            data, target = data.to(device), target.to(device)            
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target)

@@ -54,6 +54,18 @@ if __name__ == "__main__" :
             depth = 6,
             num_classes = 10
         )
+    
+    elif args.model == 'bitnet_mlp':
+        from models.bitnet_mlp import BitnetMLP
+        from config import BitnetConfig 
+        # 설정 값 불러오기
+        config = BitnetConfig()
+        print("BitNet-style MLP")
+        model = BitnetMLP(
+            config
+        )
+        
+        print(model) # 모델을 확인해보장
         
     # This is for MNIST Dataset!    
     # transform = transforms.Compose([

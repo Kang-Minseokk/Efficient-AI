@@ -12,6 +12,7 @@ import math
 import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import ExponentialLR
 
 import pynvml
 
@@ -53,8 +54,8 @@ if __name__ == "__main__" :
             channels = 3,
             patch_size = 4,
             dim = 512,
-            depth = 6,
-            num_classes = 10
+            depth = 12,
+            num_classes = 100 
         )
     
     elif args.model == 'bitnet_mlp':
@@ -92,14 +93,15 @@ if __name__ == "__main__" :
     ])
 
     # Datasets & loaders
-    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    test_dataset  = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    train_dataset = datasets.CIFAR100(root='./data', train=True, download=True, transform=transform)
+    test_dataset  = datasets.CIFAR100(root='./data', train=False, download=True, transform=transform)
     train_loader  = DataLoader(train_dataset, batch_size=256, shuffle=True)
     test_loader   = DataLoader(test_dataset,  batch_size=256, shuffle=False)
     # Optimizer & loss
-    optimizer = optim.Adam(model.parameters(), lr=8e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
+    optimizer = optim.Adam(model.parameters(), lr=4e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
+    # scheduler = ExponentialLR(optimizer, gamma = 0.95) # 후반부에 진동하는 현상을 해결하기 위해서 넣어줍니다.
     # optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99), weight_decay=5e-5) # MLP Mixer 관련 글에서 AdamW를 사용하였다.
-    # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 300, eta_min = 1e-6, last_epoch = -1, verbose = False)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 30, eta_min = 1e-6, last_epoch = -1)
     
     criterion = nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

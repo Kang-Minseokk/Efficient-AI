@@ -36,6 +36,9 @@ class TernaryLinear(nn.Module):
         alpha = torch.clamp(torch.mean(torch.abs(weight)), min=1e-5) # 위에서 Learnable Parameter로 설정해보았습니다.
         
         result = torch.clamp(torch.round(weight / alpha), -1, 1) * alpha
+        # print(f"1의 개수: {(result > 0).sum().item()}")
+        # print(f"0의 개수: {(result == 0).sum().item()}")
+        # print(f"-1의 개수: {(result < 0).sum().item()}") 가중치의 개수를 확인해봐도 적절히 균형을 이루고 있습니다.
         return result
 
     def forward(self, x):

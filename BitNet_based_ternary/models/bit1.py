@@ -64,7 +64,7 @@ class BitNetMLP(nn.Module):
         for i in range(depth):
             in_f = in_features if i == 0 else hidden_features
             layers.append(BinaryLinear(in_f, hidden_features, bias=True))
-            layers.append(nn.GELU())
+            layers.append(nn.SiLU())
             layers.append(nn.Dropout(dropout))
         # Output layer
         layers.append(BinaryLinear(hidden_features, num_classes, bias=True))

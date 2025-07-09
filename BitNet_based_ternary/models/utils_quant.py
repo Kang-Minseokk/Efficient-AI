@@ -8,10 +8,13 @@ def weight_quant(weight, num_bits=1.58):
     weight = weight.float()
     s =  1 / weight.abs().mean().clamp(min=1e-5)
     if num_bits == 1.58:                
-        result = (weight * s).round().clamp(-1, 1) / s
+        result = (weight * s).round().clamp(-1, 1) / s        
         
     elif num_bits == 1:
-        result = (weight.sign() * s).round() / s
+        result = (weight.sign() * s).round() / s        
+    
+    elif num_bits == 32:
+        result = weight
     
     else :
         raise ValueError("Unsupported num_bits value. Use 1 or 1.58.")

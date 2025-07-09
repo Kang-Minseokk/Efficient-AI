@@ -18,6 +18,8 @@ import pynvml
 
 
 if __name__ == "__main__" :
+    
+    
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     
     pynvml.nvmlInit() # 전력 측정을 하기 위한 초기화
@@ -74,7 +76,7 @@ if __name__ == "__main__" :
             config
         )
         
-        
+    print(model)    
     # This is for MNIST Dataset!    
     # transform = transforms.Compose([
     #     transforms.ToTensor(),

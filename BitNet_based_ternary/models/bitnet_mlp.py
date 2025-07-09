@@ -49,14 +49,24 @@ class BitnetMLP(nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
         self.ffn_layernorm = RMSNorm(self.intermediate_size, eps = config.rms_norm_eps)
         
-        self.classifier = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1,1)),
-            nn.Flatten(),
-            nn.Linear(3, config.num_classes)
-        )
+        # self.classifier = nn.Sequential(
+        #     nn.AdaptiveAvgPool2d((1,1)),
+        #     nn.Flatten(),
+        #     nn.Linear(3, config.num_classes)
+        # )
         
-    def forward(self, x):
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            LinearLayer(3 * 32 * 32, config.num_classes)
+        ) # 분류기는 하나의 Liner Layer로 구성이 되어있습니다.
+        
+    def forward(self, x):     
+        # 차원 불일치 문제 해결
+        batch_size = x.size(0)
+        x = x.view(batch_size, -1)
+           
         x = self.act_fn(self.gate_proj(x)) * self.up_proj(x)
+        
         x = self.ffn_layernorm(x)
         x = self.down_proj(x)
         x = self.classifier(x)        

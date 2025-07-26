@@ -43,7 +43,7 @@ def FeedForward(dim, expansion_factor = 4, dropout = 0., dense = LinearLayer):
         nn.Dropout(dropout)
     )
     
-def MLPMixer(*, image_size, channels, patch_size, dim, num_classes, expansion_factor = 4, expansion_factor_token = 0.5, dropout = 0.4, depth):
+def MLPMixer(*, image_size, channels, patch_size, dim, num_classes, expansion_factor = 4, expansion_factor_token = 0.5, dropout = 0.6, depth):
     image_h, image_w = pair(image_size)
     assert (image_h % patch_size) == 0 and (image_w % patch_size) == 0, 'image must be divisible by patch size'
     num_patches = (image_h // patch_size) * (image_w // patch_size)

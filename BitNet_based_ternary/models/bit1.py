@@ -39,7 +39,9 @@ class BinaryLinear(nn.Module):
 
     def forward(self, x):
         x = self.norm(x) # 과도한 정규화가 아닌가 생각이 든다.
-        w_q = self.weight + self.weight.sign().detach() * torch.exp(self.scale) - self.weight.detach()
+        # 스케일링을 하지 않으면 정확도가 하락하는가?
+        # w_q = self.weight + self.weight.sign().detach() * torch.exp(self.scale) - self.weight.detach()
+        w_q = self.weight + self.weight.sign().detach() - self.weight.detach()
         # -1과 1을 가지는 이진 가중치에 scaling factor를 곱하여 크기를 반영할 수 있도록 합니다.        
         return F.linear(x, w_q, self.bias)
 

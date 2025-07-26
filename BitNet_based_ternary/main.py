@@ -16,7 +16,9 @@ from torch.optim.lr_scheduler import ExponentialLR
 
 import pynvml
 
-
+# import sys
+# sys.path.append('./AutoAugment')
+# from AutoAugment.autoaugment import CIFAR10Policy
 
 if __name__ == "__main__" :
     
@@ -47,16 +49,18 @@ if __name__ == "__main__" :
         model = FP32MLP()
     
     elif args.model == 'mlp_mixer':
-        from models.mlp_mixer import MLPMixer # MLP Mixer
+        # from models.mlp_mixer import MLPMixer # MLP Mixer
+        from models.cifar_mlp_mixer import MLPMixer # MLP Mixer
         print("MLP Mixer Mode")
-        model = MLPMixer(
-            image_size = 32, # 이미지 한 변의 길이
-            channels = 3,
-            patch_size = 4,
-            dim = 512,
-            depth = 12,
-            num_classes = 100 
-        )
+        # model = MLPMixer(
+        #     image_size = 32, # 이미지 한 변의 길이
+        #     channels = 3,
+        #     patch_size = 4,
+        #     dim = 512,
+        #     depth = 12, # 12가 일반적인 depth
+        #     num_classes = 100 
+        # )
+        model = MLPMixer()
     
     elif args.model == 'bitnet_mlp':
         from models.bitnet_mlp import BitnetMLP
@@ -85,27 +89,58 @@ if __name__ == "__main__" :
     # ])
     
     # This is for CIFAR-10 Dataset!
-    transform = transforms.Compose([
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(
+    #         mean = [0.4914, 0.4822, 0.4465],
+    #         std =  [0.2470, 0.2435, 0.2616]
+    #     )
+    # ])
+    
+    # # This is for CIFAR-100 Dataset!
+    # transform = transforms.Compose([
+    #     transforms.ToTensor(),
+    #     transforms.Normalize(
+    #         mean = [0.5071, 0.4867, 0.4408],
+    #         std = [0.2675, 0.2565, 0.2761]
+    #     )
+    # ])
+    
+    # CIFAR-10 + AutoAugment
+    train_transform = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        # CIFAR10Policy(),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean = [0.4914, 0.4822, 0.4465], std=[0.2470, 0.2435, 0.2010]
+            mean = [0.4914, 0.4822, 0.4465],
+            std  = [0.2470, 0.2435, 0.2616]
+        )
+    ])
+
+    test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean = [0.4914, 0.4822, 0.4465],
+            std  = [0.2470, 0.2435, 0.2616]
         )
     ])
 
     # Datasets & loaders
-    train_dataset = datasets.CIFAR100(root='./data', train=True, download=True, transform=transform)
-    test_dataset  = datasets.CIFAR100(root='./data', train=False, download=True, transform=transform)
+    train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+    test_dataset  = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
     train_loader  = DataLoader(train_dataset, batch_size=256, shuffle=True)
     test_loader   = DataLoader(test_dataset,  batch_size=256, shuffle=False)
     # Optimizer & loss
     optimizer = optim.Adam(model.parameters(), lr=4e-4) # BitNet 논문에서는 2e-4, 4e-4, 8e-4가 존재한다.
     # scheduler = ExponentialLR(optimizer, gamma = 0.95) # 후반부에 진동하는 현상을 해결하기 위해서 넣어줍니다.
     # optimizer = optim.Adam(model.parameters(), lr=1e-4, betas=(0.9, 0.99), weight_decay=5e-5) # MLP Mixer 관련 글에서 AdamW를 사용하였다.
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, 30, eta_min = 1e-6, last_epoch = -1)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100, eta_min=1e-4)
+
     
     criterion = nn.CrossEntropyLoss()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    epochs = 30
+    epochs = 100
     model.to(device)
     for epoch in range(1, epochs + 1):
         model.train()
